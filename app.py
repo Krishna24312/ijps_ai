@@ -121,8 +121,7 @@ with col_title:
 
     st.write(
         "Ask a question about plastic surgery, hair transplant, hair care, "
-        "or wound management, and this tool will suggest relevant IJPS articles "
-        "with a short teaser and a link to read the full text on Thieme."
+        "or wound management, and this tool will suggest relevant IJPS articles."
     )
 
 st.markdown("---")
