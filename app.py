@@ -1,5 +1,6 @@
-# use the venv "conda actiavet krish"
+# use the venv "conda activate krish"
 # Run with:  streamlit run app.py
+
 import re
 from pathlib import Path
 
@@ -29,6 +30,7 @@ def load_data():
     abstract = df["abstract"].fillna("")
     keywords = df.get("keywords", "").fillna("")
     authors = df.get("authors", "").fillna("")
+    pdf_url = df.get("pdf_url", "").fillna("")
 
     # Boost title & keywords a bit
     title_boost = (title + " ") * 3
@@ -48,6 +50,7 @@ def load_data():
     df["abstract"] = abstract
     df["keywords"] = keywords
     df["authors"] = authors
+    df["pdf_url"] = pdf_url
 
     return df, vectorizer, tfidf_matrix
 
@@ -121,7 +124,8 @@ with col_title:
 
     st.write(
         "Ask a question about plastic surgery, hair transplant, hair care, "
-        "or wound management, and this tool will suggest relevant IJPS articles."
+        "or wound management, and this tool will suggest relevant IJPS articles "
+        "with a short teaser and links to the full text on Thieme."
     )
 
 st.markdown("---")
@@ -177,8 +181,14 @@ if query:
                 )
                 st.write(teaser)
 
+                # Link to article landing page
                 if isinstance(row.get("article_url"), str) and row["article_url"]:
                     st.markdown(f"[Read full article on Thieme]({row['article_url']})")
+
+                # Optional direct PDF link
+                pdf_link = row.get("pdf_url")
+                if isinstance(pdf_link, str) and pdf_link.strip():
+                    st.markdown(f"[Download PDF]({pdf_link})")
 
                 st.markdown("---")
 
@@ -193,3 +203,4 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
