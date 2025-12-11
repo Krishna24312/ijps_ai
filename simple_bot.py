@@ -1,7 +1,3 @@
-# simple_bot.py
-# Run with:  python simple_bot.py
-# (from the folder that contains ijps_articles.csv)
-
 import re
 
 import pandas as pd
@@ -16,6 +12,7 @@ df = pd.read_csv("ijps_articles.csv")
 title = df["title"].fillna("")
 abstract = df["abstract"].fillna("")
 keywords = df.get("keywords", "").fillna("")
+pdf_url = df.get("pdf_url", "").fillna("")
 
 # ---------- 2. Build the searchable text with boosted keywords ----------
 
@@ -27,10 +24,16 @@ boosted_keywords = (keywords + " ") * boost_factor
 # Combine into a single "text" field
 df["text"] = title + " " + abstract + " " + boosted_keywords
 
+# Keep cleaned columns (optional but neat)
+df["title"] = title
+df["abstract"] = abstract
+df["keywords"] = keywords
+df["pdf_url"] = pdf_url
+
 # ---------- 3. Build TF-IDF matrix for article search ----------
 vectorizer = TfidfVectorizer(
     stop_words="english",
-    ngram_range=(1, 2),     # 1- and 2-word phrases
+    ngram_range=(1, 2),  # 1- and 2-word phrases
 )
 tfidf_matrix = vectorizer.fit_transform(df["text"])
 
@@ -101,6 +104,7 @@ def answer_query(query: str, top_k: int = 3) -> str:
     - similarity score
     - 2–3 query-aware teaser lines from the abstract
     - 'Read more' link
+    - PDF link (if available)
     """
     articles = find_top_articles(query, top_k=top_k)
 
@@ -113,6 +117,7 @@ def answer_query(query: str, top_k: int = 3) -> str:
         abstract = article["abstract"]
         url = article["article_url"]
         score = article["score"]
+        pdf = article.get("pdf_url", "")
 
         teaser = make_query_aware_teaser(query, abstract, max_sentences=3)
 
@@ -121,6 +126,10 @@ def answer_query(query: str, top_k: int = 3) -> str:
         lines.append(f"Score : {score:.3f}")
         lines.append(teaser)
         lines.append(f"Read more: {url}")
+
+        if isinstance(pdf, str) and pdf.strip():
+            lines.append(f"PDF: {pdf}")
+
         lines.append("-" * 60)
 
     return "\n".join(lines)
