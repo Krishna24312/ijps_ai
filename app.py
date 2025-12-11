@@ -125,7 +125,8 @@ with col_title:
     st.write(
         "Ask a question about plastic surgery, hair transplant, hair care, "
         "or wound management, and this tool will suggest relevant IJPS articles."
-        "The match score gives an estimate as to how relevant the article might be."
+        "
+        The match score gives an estimate as to how relevant the article might be."
     )
 
 st.markdown("---")
