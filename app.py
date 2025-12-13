@@ -214,7 +214,7 @@ st.markdown(
     <div class="hero-subtitle">
       Ask a question about plastic surgery, hair transplant, hair care, or wound management,
       and this tool will suggest relevant IJPS articles with a short teaser and a link
-      to read the full text on Thieme.
+      to read the full text on Thieme or to view the pdf.
     </div>
   </div>
 </div>
