@@ -30,7 +30,7 @@ def img_to_base64(path: str) -> str:
         return base64.b64encode(f.read()).decode("utf-8")
 
 
-# this is your OT / theatre image; must sit next to app.py
+# OT / theatre hero image; must sit next to app.py
 hero_bg_b64 = img_to_base64("hero_bg.jpg")
 
 
@@ -69,7 +69,7 @@ def load_data():
 
 
 def split_into_sentences(text: str):
-    sentences = re.split(r'(?<=[.!?])\s+', str(text))
+    sentences = re.split(r"(?<=[.!?])\s+", str(text))
     return [s.strip() for s in sentences if s.strip()]
 
 
@@ -129,6 +129,12 @@ st.markdown(
     background-repeat: no-repeat;
 }}
 
+/* Make the top Streamlit header bar transparent */
+header {{
+    background-color: transparent !important;
+    box-shadow: none !important;
+}}
+
 /* Center content a bit more and make background transparent so photo shows */
 .main .block-container {{
     max-width: 1100px;
@@ -136,7 +142,7 @@ st.markdown(
     background: transparent;
 }}
 
-/* HERO CARD (now just a translucent panel on top of the photo) */
+/* HERO CARD (translucent panel on top of the photo) */
 .hero {{
     position: relative;
     width: 100%;
@@ -190,7 +196,6 @@ st.markdown(
 h2, h3, h4, h5, h6, p, li, label, span {{
     color: #f5f5f5 !important;
 }}
-
 </style>
 """,
     unsafe_allow_html=True,
@@ -249,40 +254,40 @@ if query:
         for rank, (_, row) in enumerate(results.iterrows(), start=1):
             with st.container():
                 st.markdown(f"#### {rank}. {row['title']}")
-                meta_bits = []
 
+                meta_bits = []
                 if isinstance(row.get("authors"), str) and row["authors"].strip():
                     meta_bits.append(row["authors"])
-
                 if "score" in row:
                     meta_bits.append(f"Match score: {row['score']:.3f}")
-
                 if meta_bits:
                     st.caption(" • ".join(meta_bits))
 
                 teaser = make_query_aware_teaser(
-                query=query,
-                abstract=str(row["abstract"]),
-                max_sentences=3,
-            )
-            st.write(teaser)
-
-            # Links: Thieme article (first line) + PDF (next line)
-            article_url = row.get("article_url", "")
-            pdf_url = row.get("pdf_url", "")
-
-            if isinstance(article_url, str) and article_url.strip() and isinstance(pdf_url, str) and pdf_url.strip():
-                # both links present -> two lines
-                st.markdown(
-                    f"[Read full article on Thieme]({article_url})  \n"
-                    f"[Download PDF]({pdf_url})"
+                    query=query,
+                    abstract=str(row["abstract"]),
+                    max_sentences=3,
                 )
-            elif isinstance(article_url, str) and article_url.strip():
-                st.markdown(f"[Read full article on Thieme]({article_url})")
-            elif isinstance(pdf_url, str) and pdf_url.strip():
-                st.markdown(f"[Download PDF]({pdf_url})")
+                st.write(teaser)
 
+                # Links: Thieme article (first line) + PDF (next line)
+                article_url = row.get("article_url", "")
+                pdf_url = row.get("pdf_url", "")
 
+                if (
+                    isinstance(article_url, str)
+                    and article_url.strip()
+                    and isinstance(pdf_url, str)
+                    and pdf_url.strip()
+                ):
+                    st.markdown(
+                        f"[Read full article on Thieme]({article_url})  \n"
+                        f"[Download PDF]({pdf_url})"
+                    )
+                elif isinstance(article_url, str) and article_url.strip():
+                    st.markdown(f"[Read full article on Thieme]({article_url})")
+                elif isinstance(pdf_url, str) and pdf_url.strip():
+                    st.markdown(f"[Download PDF]({pdf_url})")
 
 # Footer / disclaimer
 st.markdown(
