@@ -1,6 +1,5 @@
 # app.py
-# Run with:  streamlit run app.py
-# (use your venv / conda env that has streamlit, pandas, sklearn installed)
+# Run with: streamlit run app.py
 
 import re
 import base64
@@ -19,6 +18,10 @@ st.set_page_config(
     layout="centered",
 )
 
+# Session state for the query
+if "query" not in st.session_state:
+    st.session_state["query"] = ""
+
 
 # ----------------- Helpers -----------------
 def img_to_base64(path: str) -> str:
@@ -30,36 +33,30 @@ def img_to_base64(path: str) -> str:
         return base64.b64encode(f.read()).decode("utf-8")
 
 
-# OT / theatre hero image; must sit next to app.py
 hero_bg_b64 = img_to_base64("hero_bg.jpg")
 
 
 # ----------------- Search / NLP logic -----------------
 @st.cache_resource
 def load_data():
-    # Load the CSV
     df = pd.read_csv("ijps_articles.csv")
 
-    # Safely handle missing columns/values
     title = df["title"].fillna("")
     abstract = df["abstract"].fillna("")
     keywords = df.get("keywords", "").fillna("")
     authors = df.get("authors", "").fillna("")
 
-    # Boost title & keywords a bit
     title_boost = (title + " ") * 3
     keyword_boost = (keywords + " ") * 2
 
     df["text"] = title_boost + abstract + " " + keyword_boost
 
-    # Build TF-IDF with 1–2 word n-grams
     vectorizer = TfidfVectorizer(
         stop_words="english",
         ngram_range=(1, 2),
     )
     tfidf_matrix = vectorizer.fit_transform(df["text"])
 
-    # Keep cleaned columns
     df["title"] = title
     df["abstract"] = abstract
     df["keywords"] = keywords
@@ -74,10 +71,6 @@ def split_into_sentences(text: str):
 
 
 def make_query_aware_teaser(query: str, abstract: str, max_sentences: int = 3) -> str:
-    """
-    Choose up to max_sentences from the abstract that are
-    most relevant to the query, using TF-IDF over the sentences.
-    """
     sentences = split_into_sentences(abstract)
     if not sentences:
         return ""
@@ -114,87 +107,182 @@ def search_articles(query: str, top_k: int = 3):
     return results
 
 
-# ----------------- Global CSS (full-page bg + hero + input) -----------------
+# ----------------- Global CSS -----------------
 st.markdown(
     f"""
 <style>
-/* FULL PAGE BACKGROUND */
+:root {{
+  --text: rgba(255,255,255,0.94);
+  --muted: rgba(255,255,255,0.70);
+  --glass: rgba(255,255,255,0.12);
+  --glass-2: rgba(255,255,255,0.06);
+  --border: rgba(255,255,255,0.20);
+  --shadow: 0 26px 70px rgba(0,0,0,0.55);
+}}
+
+html, body, [class*="css"] {{
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}}
+
+* {{ box-sizing: border-box; }}
+
+/* BACKGROUND (closer to your reference screenshot) */
 .stApp {{
-    background-image:
-        linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.55)),
-        url("data:image/jpg;base64,{hero_bg_b64}");
-    background-size: cover;
-    background-position: center;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
+  background-image:
+    radial-gradient(900px 520px at 18% 18%, rgba(255,255,255,0.10), rgba(0,0,0,0) 62%),
+    linear-gradient(rgba(0,0,0,0.34), rgba(0,0,0,0.68)),
+    url("data:image/jpg;base64,{hero_bg_b64}");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }}
 
-/* Make the top Streamlit header bar transparent */
-header {{
-    background-color: transparent !important;
-    box-shadow: none !important;
+@media (max-width: 900px) {{
+  .stApp {{ background-attachment: scroll; }}
 }}
 
-/* Center content a bit more and make background transparent so photo shows */
+header[data-testid="stHeader"] {{ background: transparent; }}
+
 .main .block-container {{
-    max-width: 1100px;
-    padding-top: 2rem;
-    background: transparent;
+  max-width: 1120px;
+  padding-top: 1.9rem;
+  padding-bottom: 2.2rem;
+  background: transparent;
 }}
 
-/* HERO CARD (translucent panel on top of the photo) */
+h1,h2,h3,h4,h5,h6,p,li,label,span {{
+  color: var(--text) !important;
+}}
+
+div[data-testid="stCaptionContainer"], small {{
+  color: var(--muted) !important;
+}}
+
+/* HERO (frosted glass like your reference) */
 .hero {{
-    position: relative;
-    width: 100%;
-    min-height: 260px;
-    margin: 2rem auto 3rem auto;
-    border-radius: 2.5rem;
-    background: radial-gradient(circle at top left, rgba(255,255,255,0.25), rgba(0,0,0,0.35));
-    box-shadow: 0 22px 50px rgba(0,0,0,0.6);
-    display: flex;
-    align-items: center;
+  position: relative;
+  width: 100%;
+  margin: 1.1rem auto 2.2rem auto;
+  border-radius: 2.3rem;
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  overflow: hidden;
+}}
+
+.hero::before {{
+  content: "";
+  position: absolute;
+  inset: 0;
+  /* subtle dark wash so text stays readable over any background */
+  background: linear-gradient(90deg, rgba(0,0,0,0.28), rgba(0,0,0,0.12));
+  pointer-events: none;
 }}
 
 .hero-content {{
-    color: white;
-    padding: 3.2rem 3.6rem;
-    max-width: 540px;
+  position: relative;
+  padding: 3.1rem 3.25rem;
+  max-width: 620px;
 }}
 
 .hero-kicker {{
-    text-transform: uppercase;
-    letter-spacing: 0.18em;
-    font-size: 0.80rem;
-    opacity: 0.9;
-    margin-bottom: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  font-size: 0.78rem;
+  opacity: 0.95;
+  margin-bottom: 0.85rem;
+  color: rgba(255,255,255,0.78) !important;
 }}
 
+/* TITLE: brighter + “marketing hero” feel like your screenshot */
 .hero-title {{
-    font-size: 2.8rem;
-    font-weight: 700;
-    margin-bottom: 0.8rem;
+  font-size: clamp(2.35rem, 3.8vw, 3.6rem);
+  font-weight: 820;
+  line-height: 1.05;
+  margin-bottom: 0.95rem;
+  color: rgba(255,255,255,1) !important;
+  letter-spacing: -0.015em;
+  text-shadow: 0 10px 30px rgba(0,0,0,0.42);
 }}
 
 .hero-subtitle {{
-    font-size: 0.98rem;
-    line-height: 1.5;
-    opacity: 0.97;
+  font-size: 1.02rem;
+  line-height: 1.58;
+  color: rgba(255,255,255,0.86) !important;
+  text-shadow: 0 8px 20px rgba(0,0,0,0.35);
+  max-width: 62ch;
 }}
 
-/* Rounded search bar look */
-.stTextInput > div > div > input {{
-    border-radius: 999px;
-    padding: 0.7rem 1.1rem;
-    border: 1px solid #dde1e7;
+@media (max-width: 700px) {{
+  .hero {{ border-radius: 1.7rem; }}
+  .hero-content {{ padding: 2.2rem 1.6rem; max-width: 100%; }}
 }}
 
-.stTextInput > label {{
-    font-weight: 500;
-    color: white;
+/* SUBHEADER */
+div[data-testid="stSubheader"] h2 {{
+  font-size: 1.28rem;
 }}
 
-h2, h3, h4, h5, h6, p, li, label, span {{
-    color: #f5f5f5 !important;
+/* CHIPS */
+.stButton > button {{
+  width: 100% !important;
+  border-radius: 999px !important;
+  padding: 0.52rem 0.95rem !important;
+  border: 1px solid rgba(255,255,255,0.22) !important;
+  background: rgba(0,0,0,0.42) !important;
+  color: rgba(255,255,255,0.92) !important;
+  font-size: 0.86rem !important;
+  line-height: 1.2;
+  white-space: normal !important;
+  box-shadow: 0 10px 22px rgba(0,0,0,0.30);
+  transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+}}
+.stButton > button:hover {{
+  background: rgba(255,255,255,0.12) !important;
+  border-color: rgba(255,255,255,0.48) !important;
+  transform: translateY(-1px);
+}}
+
+/* SEARCH BAR: make it stand out cleanly (white “card” like your reference) */
+div[data-testid="stTextInput"] {{
+  max-width: 860px;
+  margin-top: 0.20rem;
+}}
+
+div[data-testid="stTextInput"] input {{
+  border-radius: 999px !important;
+  padding: 0.86rem 1.10rem !important;
+
+  background: rgba(255,255,255,0.92) !important;
+  color: rgba(15,15,15,0.92) !important;
+
+  border: 1px solid rgba(255,255,255,0.55) !important;
+  box-shadow: 0 16px 36px rgba(0,0,0,0.35);
+  outline: none !important;
+
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
+}}
+
+div[data-testid="stTextInput"] input::placeholder {{
+  color: rgba(20,20,20,0.55) !important;
+}}
+
+div[data-testid="stTextInput"] input:hover {{
+  transform: translateY(-1px);
+  box-shadow: 0 18px 42px rgba(0,0,0,0.40);
+}}
+
+div[data-testid="stTextInput"] input:focus {{
+  border-color: rgba(255,255,255,0.85) !important;
+  box-shadow: 0 20px 46px rgba(0,0,0,0.45);
+}}
+div[data-testid="stTextInput"] input:focus-visible {{
+  outline: none !important;
 }}
 </style>
 """,
@@ -214,7 +302,7 @@ st.markdown(
     <div class="hero-subtitle">
       Ask a question about plastic surgery, hair transplant, hair care, or wound management,
       and this tool will suggest relevant IJPS articles with a short teaser and a link
-      to read the full text on Thieme or to view the pdf.
+      to read the full text on Thieme or to view the PDF.
     </div>
   </div>
 </div>
@@ -224,26 +312,38 @@ st.markdown(
 
 # Query section
 st.subheader("Ask a question")
+st.caption("Try one of these:")
 
+example_queries = [
+    "Complications after hair transplant surgery",
+    "Hair care recommendations for alopecia patients using minoxidil",
+    "Newer modalities for treatment of pressure ulcers",
+    "Effect of caffeine on full-thickness skin graft healing",
+]
+
+# Two rows of chips (buttons)
+row1 = st.columns(2)
+for i, col in enumerate(row1):
+    ex = example_queries[i]
+    with col:
+        if st.button(ex, key=f"example_{i}"):
+            st.session_state["query"] = ex
+
+row2 = st.columns(2)
+for j, col in enumerate(row2, start=2):
+    ex = example_queries[j]
+    with col:
+        if st.button(ex, key=f"example_{j}"):
+            st.session_state["query"] = ex
+
+# Text input bound to session_state["query"]
 query = st.text_input(
     "Type your question here:",
-    value="",
+    key="query",
     placeholder="e.g. complications after hair transplant surgery",
 )
 
-# Example queries if box is empty
-if not query:
-    st.markdown("**Try questions like:**")
-    st.markdown(
-        """
-        - *Complications after hair transplant surgery*  
-        - *Hair care recommendations for alopecia patients using minoxidil*  
-        - *Newer modalities for treatment of pressure ulcers*  
-        - *Effect of caffeine on full-thickness skin graft healing*  
-        """
-    )
-
-# Results
+# ----------------- Results -----------------
 if query:
     results = search_articles(query, top_k=3)
 
@@ -270,7 +370,6 @@ if query:
                 )
                 st.write(teaser)
 
-                # Links: Thieme article (first line) + PDF (next line)
                 article_url = row.get("article_url", "")
                 pdf_url = row.get("pdf_url", "")
 
@@ -289,6 +388,8 @@ if query:
                 elif isinstance(pdf_url, str) and pdf_url.strip():
                     st.markdown(f"[Download PDF]({pdf_url})")
 
+                st.markdown("---")
+
 # Footer / disclaimer
 st.markdown(
     """
@@ -297,6 +398,10 @@ This prototype is for educational and exploratory use only and does not replace
 clinical judgement. Always consult the full article and current guidelines before
 making treatment decisions.
 </small>
+""",
+    unsafe_allow_html=True,
+)
+
 """,
     unsafe_allow_html=True,
 )
