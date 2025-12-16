@@ -1,3 +1,4 @@
+#This is just a simple CLI bot. It is not used by the app.py file
 import re
 
 import pandas as pd
