@@ -390,15 +390,13 @@ if query:
 
                 st.markdown("---")
 
-# Footer / disclaimer
-st.markdown(
-    """
-<small>
-This prototype is for educational and exploratory use only and does not replace
-clinical judgement. Always consult the full article and current guidelines before
-making treatment decisions.
-</small>
-""",
-    unsafe_allow_html=True,
-)
-
+# ----------------- Footer / disclaimer -----------------
+with st.expander("Disclaimer & methodology"):
+    st.markdown(
+        """
+- This prototype searches **only** a few IJPS articles for demonstration purposes.
+- Ranking uses **TF-IDF cosine similarity** (title boosted ×3, keywords boosted ×2) and includes **light synonym expansion** to improve matching.
+- Teasers are extracted from the abstract using a **query-aware sentence selection** step.
+- Educational use only — not medical advice. Always consult the full article and current guidelines.
+"""
+    )
