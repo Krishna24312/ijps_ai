@@ -1,4 +1,5 @@
 # app.py
+# use conda activate krish before running.(only for local setup)
 # Run with: streamlit run app.py
 
 import re
@@ -96,9 +97,90 @@ def make_query_aware_teaser(query: str, abstract: str, max_sentences: int = 3) -
     return teaser
 
 
+# ----------------- Synonym expansion (light) -----------------
+def expand_query_with_synonyms(query: str) -> str:
+    """
+    Light synonym expansion to improve TF-IDF matching.
+    Keeps the original query and appends related terms.
+    """
+    q = " " + str(query).lower().strip() + " "
+
+    synonym_map = {
+        # wounds / ulcers
+        "bedsore": ["pressure ulcer", "decubitus ulcer", "pressure sore"],
+        "bed sore": ["pressure ulcer", "decubitus ulcer", "pressure sore"],
+        "pressure sore": ["pressure ulcer", "decubitus ulcer"],
+        "pressure ulcer": ["bedsore", "decubitus ulcer"],
+        "ulcer": ["wound", "lesion"],
+
+        # flaps / grafts
+        "skin graft": [
+            "split thickness skin graft",
+            "full thickness skin graft",
+            "stsg",
+            "ftsg",
+        ],
+        "stsg": ["split thickness skin graft", "skin graft"],
+        "ftsg": ["full thickness skin graft", "skin graft"],
+        "flap": ["local flap", "free flap", "microvascular flap"],
+
+        # hair / alopecia
+        "hair transplant": [
+            "fue",
+            "follicular unit extraction",
+            "follicular unit transplantation",
+            "fut",
+        ],
+        "fue": ["follicular unit extraction", "hair transplant"],
+        "fut": ["follicular unit transplantation", "hair transplant"],
+        "alopecia": ["hair loss", "androgenetic alopecia"],
+        "hair loss": ["alopecia"],
+
+        # burns
+        "burn": ["thermal injury", "burn injury"],
+        "burns": ["thermal injury", "burn injury"],
+
+        # scars
+        "scar": ["cicatrix", "hypertrophic scar", "keloid"],
+        "keloid": ["hypertrophic scar", "scar"],
+    }
+
+    extras = []
+
+    # Check longer phrases first
+    for key in sorted(synonym_map.keys(), key=len, reverse=True):
+        if f" {key} " in q:
+            extras.extend(synonym_map[key])
+
+    # De-duplicate, keep order
+    seen = set()
+    extras_unique = []
+    for t in extras:
+        if t not in seen:
+            seen.add(t)
+            extras_unique.append(t)
+
+    if not extras_unique:
+        return query
+
+    return query + " " + " ".join(extras_unique)
+
+
+def normalize_query(query: str) -> str:
+    """Small cleanup + synonym expansion."""
+    query = str(query).strip()
+    if not query:
+        return query
+    query = re.sub(r"\s+", " ", query)
+    return expand_query_with_synonyms(query)
+
+
 def search_articles(query: str, top_k: int = 3):
     df, vectorizer, tfidf_matrix = load_data()
-    query_vec = vectorizer.transform([query])
+
+    expanded_query = normalize_query(query)
+
+    query_vec = vectorizer.transform([expanded_query])
     sims = linear_kernel(query_vec, tfidf_matrix).flatten()
     top_indices = sims.argsort()[::-1][:top_k]
 
@@ -364,7 +446,7 @@ if query:
                     st.caption(" • ".join(meta_bits))
 
                 teaser = make_query_aware_teaser(
-                    query=query,
+                    query=normalize_query(query),
                     abstract=str(row["abstract"]),
                     max_sentences=3,
                 )
