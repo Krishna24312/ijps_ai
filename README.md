@@ -12,7 +12,7 @@ Given a natural-language query (e.g., *“pressure ulcer newer modalities”*), 
 
 > This is **not** a general web search engine and **not** a medical advice bot.  
 > It only searches within the IJPS articles present in `ijps_articles.csv`.
-
+> streamlit app link - https://ijpsai-prototype.streamlit.app/
 ---
 
 ## Repo structure
